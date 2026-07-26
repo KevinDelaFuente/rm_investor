@@ -5,6 +5,8 @@
 # Private portfolio & deploy secrets — Option B: real holdings live only in
 # Streamlit Secrets, never in the repo. Local reading is unaffected by gitignore.
 holdings.csv
+holdings*.bak
+holdings*.csv.bak
 .streamlit/secrets.toml
 .claude/settings.local.json
 
