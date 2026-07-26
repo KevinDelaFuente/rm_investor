@@ -32,6 +32,25 @@ def _rows_to_holdings(df: pd.DataFrame) -> list[Holding]:
     return holdings
 
 
+def _holdings_secret() -> Optional[str]:
+    """Raw HOLDINGS_CSV from the environment or, on Streamlit Cloud, directly
+    from st.secrets. Reading st.secrets here (not just via the bootstrap env
+    bridge) makes the loader robust to bridge-vs-cache ordering: even if a cached
+    call runs before bootstrap(), the secret is still found."""
+    raw = os.environ.get("HOLDINGS_CSV")
+    if raw and raw.strip():
+        return raw
+    try:
+        import streamlit as st
+
+        val = st.secrets.get("HOLDINGS_CSV")  # type: ignore[attr-defined]
+        if isinstance(val, str) and val.strip():
+            return val
+    except Exception:
+        pass
+    return None
+
+
 def load_holdings(csv_path: Optional[str] = None) -> list[Holding]:
     """Read holdings (columns: ticker, shares, cost_basis).
 
@@ -42,8 +61,8 @@ def load_holdings(csv_path: Optional[str] = None) -> list[Holding]:
     An explicit csv_path (used by tests) always wins and skips the fallbacks.
     """
     if csv_path is None:
-        raw = os.environ.get("HOLDINGS_CSV")
-        if raw and raw.strip():
+        raw = _holdings_secret()
+        if raw:
             return _rows_to_holdings(pd.read_csv(io.StringIO(raw)))
 
     path = Path(csv_path) if csv_path else _cfg.resolve(_cfg.path("portfolio.csv_path", "holdings.csv"))
