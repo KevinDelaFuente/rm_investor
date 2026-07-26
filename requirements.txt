@@ -1,0 +1,25 @@
+# Core
+streamlit>=1.36
+pandas>=2.0
+numpy>=1.26
+
+# Data sources (free tier)
+yfinance>=0.2.40          # prices, history, fundamentals, recommendations, price targets
+finnhub-python>=2.4       # analyst ratings/targets + company news (free tier)
+requests>=2.31
+requests-cache>=1.2       # transparent HTTP caching to respect free-tier rate limits
+
+# Models / config
+pydantic>=2.6
+pyyaml>=6.0
+python-dotenv>=1.0
+
+# Charts
+plotly>=5.20
+
+# Tests
+pytest>=8.0
+
+# Optional (uncomment when moving to paid / real-time providers):
+# alpaca-py>=0.20
+# polygon-api-client>=1.14

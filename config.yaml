@@ -1,0 +1,103 @@
+# RM Investor — configuration.
+# Everything here is tunable. Scoring weights, valuation assumptions, the scan
+# universe, and which data provider backs each capability all live in this file.
+
+# ---------------------------------------------------------------------------
+# Which adapter backs each data capability. Swap these as you add paid keys.
+# Options: price -> yfinance | fundamentals -> yfinance,alphavantage
+#          ratings -> yfinance,finnhub | news -> yfinance,finnhub,alphavantage
+# The registry tries the primary, then falls back to yfinance where possible.
+# ---------------------------------------------------------------------------
+providers:
+  price: yfinance
+  fundamentals: yfinance
+  ratings: fmp                  # FMP price targets + grades (fallback: yfinance)
+  news: yfinance                # yfinance news (free, unlimited — saves FMP quota)
+  smart_money: [fmp_congress, sec_edgar]   # FMP congress trades (bulk) + SEC 13F
+
+# Cache TTLs (seconds) — keep free tiers happy.
+cache:
+  http_ttl_seconds: 900          # 15 min, matches delayed quotes
+  quote_ttl_seconds: 900
+  fundamentals_ttl_seconds: 86400
+  ratings_ttl_seconds: 43200
+  news_ttl_seconds: 3600
+  filings_ttl_seconds: 604800
+
+portfolio:
+  csv_path: holdings.csv
+
+universe:
+  watchlist: [AAPL, MSFT, NVDA, GOOGL, AMZN, META, TSLA, AMD, AVGO, JPM, XOM, UNH]
+  index_csv: rm_investor/data/sp500_sample.csv
+  max_size: 15                   # bounded to respect FMP free-tier (250/day)
+  include_smart_money_buys: true
+
+moonshot:
+  universe_csv: rm_investor/data/smallcap_sample.csv
+  max_market_cap: 3000000000     # $3B ceiling — small/micro-cap only
+  max_size: 15
+
+# ---------------------------------------------------------------------------
+# Valuation assumptions — DCF is sensitive to these; they are shown in the UI.
+# ---------------------------------------------------------------------------
+valuation:
+  discount_rate: 0.10            # required return / hurdle rate
+  terminal_growth: 0.025         # long-run growth after the projection window
+  projection_years: 5
+  default_growth: 0.08           # used when a company's own growth is unknown
+  max_growth: 0.20               # cap runaway extrapolation
+  multiples:                     # market-median target multiples (fallbacks)
+    pe: 18.0
+    ps: 3.0
+    pb: 2.5
+    ev_ebitda: 12.0
+  method_weights: {dcf: 0.40, multiples: 0.40, ddm: 0.20}
+  # per-ticker overrides, e.g.  overrides: {AAPL: {default_growth: 0.06}}
+  overrides: {}
+
+# ---------------------------------------------------------------------------
+# Deterministic scoring. Each factor is 0-100; weights sum to ~1.0 per profile.
+# ---------------------------------------------------------------------------
+scoring:
+  sell:
+    weights:
+      price_vs_target: 0.15
+      overvaluation: 0.20
+      pe_stretch: 0.10
+      momentum_overbought: 0.15
+      analyst_deterioration: 0.15
+      gain_concentration: 0.10
+      news_negative: 0.075
+      smart_money_selling: 0.075
+    bands: {sell: 67, trim: 45}   # >=67 SELL, >=45 TRIM, else HOLD
+  opportunity:
+    weights:
+      analyst_upside: 0.25
+      undervaluation: 0.25
+      valuation_reasonable: 0.10
+      momentum: 0.15
+      news_positive: 0.10
+      smart_money_buying: 0.15
+    bands: {strong: 67, watch: 50}
+  moonshot:
+    weights:
+      small_cap: 0.20
+      revenue_growth: 0.25
+      under_followed: 0.15
+      momentum_breakout: 0.20
+      accumulation: 0.20
+    bands: {high: 65, medium: 45}
+
+smart_money:
+  congress:
+    house_url: https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json
+    senate_url: https://senate-stock-watcher-data.s3-us-west-2.amazonaws.com/aggregate/all_transactions.json
+    lookback_days: 180
+    pages: 3                     # FMP bulk-congress pages per chamber (free tier: only page 0 returns)
+    page_limit: 25               # FMP free-tier caps `limit` at 25; raise on paid tiers
+  funds:                          # notable 13F filers (sec_edgar), by CIK
+    - {name: Berkshire Hathaway, cik: "0001067983"}
+    - {name: Scion Asset Mgmt (Burry), cik: "0001649339"}
+    - {name: Bridgewater Associates, cik: "0001350694"}
+    - {name: Pershing Square, cik: "0001336528"}
