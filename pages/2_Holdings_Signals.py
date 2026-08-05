@@ -111,10 +111,14 @@ st.dataframe(
 )
 
 st.caption(
-    "**Conviction = buy case − sell case** (−100…+100). Positive favors adding, negative "
-    "favors trimming. A holding must earn a real buy case to rate OVERWEIGHT — merely having "
-    "nothing wrong lands it in HOLD. Bands are configurable under `scoring.holdings` in "
-    "config.yaml. Holdings use free yfinance analyst ratings to conserve FMP quota."
+    "**Conviction = buy case − sell case** (−100…+100). Each side is a 0–100 weighted "
+    "composite where ~50 is neutral, so a gap under ±10 means the two cases effectively "
+    "offset (HOLD), and ±30 or more means one side clearly dominates. Thresholds are "
+    "**absolute** — they reflect each position's own merits, not a quota per band, so all "
+    "holdings can legitimately land in the same bucket. A holding must earn a real buy case "
+    "to rate OVERWEIGHT — merely having nothing wrong lands it in HOLD. Configurable under "
+    "`scoring.holdings` in config.yaml. Holdings use free yfinance analyst ratings to "
+    "conserve FMP quota."
 )
 st.divider()
 

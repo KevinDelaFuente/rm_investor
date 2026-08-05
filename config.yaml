@@ -82,8 +82,14 @@ scoring:
     bands: {strong: 67, watch: 50}
   # Holdings Signals: two-sided verdict on stocks you ALREADY OWN.
   # conviction = buy_composite - sell_composite, ranges -100..+100.
+  # Thresholds are ABSOLUTE and meaning-anchored - they are NOT tuned to produce a
+  # target number of names per band. If every holding is genuinely attractive, the
+  # tool should say so; a label reflects the position's own merits, not what else
+  # you happen to own. Each side is a 0-100 composite where ~50 is neutral, so:
+  #   |conviction| < 10  -> the buy and sell cases effectively offset (noise floor)
+  #   |conviction| >= 30 -> one side is clearly dominant (e.g. buy 75 vs sell 45)
   holdings:
-    bands: {strong_buy: 25, overweight: 10, underweight: -10, sell: -25}
+    bands: {strong_buy: 30, overweight: 10, underweight: -10, sell: -30}
   moonshot:
     weights:
       small_cap: 0.20

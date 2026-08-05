@@ -41,9 +41,12 @@ from .factors import (
 
 _cfg = get_config()
 
-# Ordered high -> low. Thresholds are on conviction (-100..+100).
+# Ordered high -> low. Thresholds are on conviction (-100..+100) and are ABSOLUTE:
+# each side is a 0-100 composite where ~50 is neutral, so a gap under 10 means the
+# two cases effectively offset, and 30+ means one side clearly dominates. They are
+# deliberately NOT calibrated to yield a set number of names per band.
 _LABELS = ("STRONG BUY", "OVERWEIGHT", "HOLD", "UNDERWEIGHT", "SELL")
-_DEFAULT_BANDS = {"strong_buy": 25, "overweight": 10, "underweight": -10, "sell": -25}
+_DEFAULT_BANDS = {"strong_buy": 30, "overweight": 10, "underweight": -10, "sell": -30}
 
 
 def band_conviction(conviction: float, bands: Optional[dict] = None) -> str:
