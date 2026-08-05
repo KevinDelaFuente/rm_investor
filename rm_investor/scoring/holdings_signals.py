@@ -37,6 +37,7 @@ from .factors import (
     f_undervaluation,
     f_valuation_reasonable,
     high_forward_pe_flag,
+    sector_baseline_pe,
 )
 
 _cfg = get_config()
@@ -71,7 +72,8 @@ def score_holding_action(position: Position, data, cfg=None) -> Score:
     cfg = cfg or _cfg
     sw = cfg.path("scoring.sell.weights", {})
     bw = cfg.path("scoring.opportunity.weights", {})
-    baseline_pe = cfg.path("valuation.multiples.pe", 18.0)
+    # Judge P/E against the company's own sector, not one market-wide 18.
+    baseline_pe = sector_baseline_pe(data.fundamentals, cfg)
     ticker = position.ticker
 
     sell_factors = [

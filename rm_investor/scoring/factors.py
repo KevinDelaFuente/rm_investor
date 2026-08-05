@@ -122,7 +122,11 @@ def f_overvaluation(fv: Optional[FairValue], w: float) -> FactorScore:
     if not fv or fv.base is None or fv.margin_of_safety is None:
         return _fs("Overvaluation", 50, w, "no fair-value estimate")
     mos = fv.margin_of_safety
-    val = _lin(mos, -0.25, 100, 0.25, 0)  # -25% MOS -> 100 (overvalued); +25% -> 0
+    # Range is deliberately wide (-60%..+30%). A narrow -25%..+25% band saturated at
+    # 100 for most of the book, so the heaviest sell factor became a constant bias
+    # instead of a signal. Model-based fair values carry real uncertainty, so only a
+    # large discrepancy should max the score.
+    val = _lin(mos, -0.60, 100, 0.30, 0)
     return _fs("Overvaluation", val, w, f"margin of safety {mos * 100:+.0f}% vs fair value ${fv.base:,.2f}")
 
 
@@ -133,6 +137,28 @@ def pe_pair(fund: Optional[Fundamentals]) -> tuple[Optional[float], Optional[flo
     t = fund.trailing_pe if (fund.trailing_pe and fund.trailing_pe > 0) else None
     f = fund.forward_pe if (fund.forward_pe and fund.forward_pe > 0) else None
     return t, f
+
+
+def sector_baseline_pe(fund: Optional[Fundamentals], cfg=None) -> float:
+    """Baseline P/E to judge a company against — its sector's, not the market's.
+
+    Comparing every stock to one market P/E of 18 penalises whole sectors on
+    principle (software is structurally above 18; energy structurally below), which
+    biases the valuation factors rather than informing them.
+    """
+    from ..config import get_config
+
+    cfg = cfg or get_config()
+    default = float(cfg.path("valuation.multiples.pe", 18.0))
+    sector = getattr(fund, "sector", None) if fund else None
+    if not sector:
+        return default
+    table = cfg.path("valuation.sector_multiples", {}) or {}
+    entry = table.get(sector) or {}
+    try:
+        return float(entry.get("pe", default))
+    except (TypeError, ValueError):
+        return default
 
 
 def high_forward_pe_flag(fund: Optional[Fundamentals], baseline_pe: float) -> Optional[str]:
@@ -254,7 +280,8 @@ def f_undervaluation(fv: Optional[FairValue], w: float) -> FactorScore:
     if not fv or fv.base is None or fv.margin_of_safety is None:
         return _fs("Undervaluation", 45, w, "no fair-value estimate")
     mos = fv.margin_of_safety
-    val = _lin(mos, -0.25, 5, 0.35, 95)  # positive MOS -> high buy score
+    # Mirrors f_overvaluation's widened range so the buy side doesn't saturate either.
+    val = _lin(mos, -0.60, 5, 0.40, 95)
     return _fs("Undervaluation", val, w, f"margin of safety {mos * 100:+.0f}% vs fair value ${fv.base:,.2f}")
 
 

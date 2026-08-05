@@ -42,16 +42,68 @@ moonshot:
 # Valuation assumptions — DCF is sensitive to these; they are shown in the UI.
 # ---------------------------------------------------------------------------
 valuation:
-  discount_rate: 0.10            # required return / hurdle rate
+  discount_rate: 0.10            # required return / hurdle rate (base case)
   terminal_growth: 0.025         # long-run growth after the projection window
   projection_years: 5
   default_growth: 0.08           # used when a company's own growth is unknown
-  max_growth: 0.20               # cap runaway extrapolation
-  multiples:                     # market-median target multiples (fallbacks)
+  max_growth: 0.20               # cap runaway extrapolation (see growth_fade)
+  # A single flat 20% cap was binding on ~2/3 of DCF-able holdings, flattening a
+  # 25%-grower and a 60%-grower into the same value. Instead, let high growth through
+  # but FADE it toward terminal growth across the projection window - the standard
+  # fix, and more honest than either extrapolating or truncating.
+  growth_fade:
+    enabled: true
+    max_initial_growth: 0.40     # ceiling on year-1 growth (still guards absurd inputs)
+    fade_to: 0.04                # growth decays toward this by the final year
+  # Risk-adjusted discount rate: a speculative micro-cap should not be discounted at
+  # the same 10% as a mega-cap. Adjustments are additive and clamped.
+  discount_adjust:
+    enabled: true
+    small_cap_threshold: 2.0e9   # below this market cap, add the premium
+    small_cap_premium: 0.03
+    micro_cap_threshold: 3.0e8
+    micro_cap_premium: 0.05      # replaces (not adds to) the small-cap premium
+    no_profit_premium: 0.02      # unprofitable (negative trailing EPS)
+    min_rate: 0.07
+    max_rate: 0.20
+  # yfinance's freeCashflow is intermittently wrong by an order of magnitude for
+  # large caps (e.g. MSFT reporting ~$16B against ~$180B operating cash flow), which
+  # produced absurd DCF values. If FCF looks implausibly small next to OCF, fall back
+  # to a conservative fraction of OCF and record why in the inputs.
+  fcf_sanity:
+    enabled: true
+    min_fcf_to_ocf: 0.25         # FCF below this fraction of OCF is treated as bad data
+    ocf_fallback_ratio: 0.65     # conservative FCF estimate = 65% of operating cash flow
+  multiples:                     # fallback market-median target multiples
     pe: 18.0
     ps: 3.0
     pb: 2.5
     ev_ebitda: 12.0
+  # Sector-specific target multiples. Applying one market median (P/E 18, P/S 3) to
+  # every company is the single biggest source of fair-value distortion: it values a
+  # hypergrowth software name and a utility identically. Any sector not listed falls
+  # back to `multiples` above. Keys match yfinance `sector` strings.
+  sector_multiples:
+    Technology:              {pe: 28.0, ps: 6.0,  pb: 6.0,  ev_ebitda: 20.0}
+    Communication Services:  {pe: 22.0, ps: 4.0,  pb: 3.5,  ev_ebitda: 14.0}
+    Healthcare:              {pe: 24.0, ps: 4.5,  pb: 4.0,  ev_ebitda: 16.0}
+    Consumer Cyclical:       {pe: 20.0, ps: 2.0,  pb: 3.5,  ev_ebitda: 13.0}
+    Consumer Defensive:      {pe: 20.0, ps: 1.5,  pb: 3.5,  ev_ebitda: 13.0}
+    Industrials:             {pe: 20.0, ps: 2.2,  pb: 3.5,  ev_ebitda: 14.0}
+    Financial Services:      {pe: 14.0, ps: 3.0,  pb: 1.6,  ev_ebitda: 12.0}
+    Energy:                  {pe: 12.0, ps: 1.2,  pb: 1.8,  ev_ebitda: 6.5}
+    Basic Materials:         {pe: 15.0, ps: 1.5,  pb: 2.0,  ev_ebitda: 9.0}
+    Utilities:               {pe: 18.0, ps: 2.5,  pb: 2.0,  ev_ebitda: 11.0}
+    Real Estate:             {pe: 30.0, ps: 6.0,  pb: 2.0,  ev_ebitda: 18.0}
+  # Growth tilt: a faster-growing company deserves a higher multiple than its sector
+  # median (and vice versa). Multiplier is clamped to [min, max] so it refines the
+  # sector target without letting extrapolation run away.
+  growth_multiple_adjust:
+    enabled: true
+    baseline_growth: 0.08        # growth already priced into the sector median
+    sensitivity: 2.0             # multiple scales by 1 + sensitivity*(g - baseline)
+    min_factor: 0.7
+    max_factor: 1.8
   method_weights: {dcf: 0.40, multiples: 0.40, ddm: 0.20}
   # per-ticker overrides, e.g.  overrides: {AAPL: {default_growth: 0.06}}
   overrides: {}
