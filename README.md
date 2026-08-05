@@ -15,7 +15,7 @@ A personal, **free-data** financial assistant: understand your portfolio, get tr
 | Page | Description |
 |------|-------------|
 | **Portfolio** | Loads `holdings.csv`, shows live-ish P&L and allocation. |
-| **Sell Signals** | Per-holding **SELL / TRIM / HOLD** from a transparent, weighted factor set. |
+| **Holdings Signals** | For stocks you **already own**: **SELL / UNDERWEIGHT / HOLD / OVERWEIGHT / STRONG BUY**, from a two-sided (buy vs. sell) weighted factor set. Conviction = buy case − sell case. |
 | **Opportunity Scanner** | Ranks a bounded universe by analyst upside (+ coverage depth & target range), undervaluation, momentum, news, and smart-money buying. |
 | **Smart Money** | Disclosed congressional trades + hedge-fund 13F changes; overlap with your book. |
 | **News** | Aggregated headlines + sentiment (when the source provides it). |

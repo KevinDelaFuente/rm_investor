@@ -21,7 +21,7 @@ Use the pages in the sidebar:
 | Page | What it does |
 |------|--------------|
 | **1 · Portfolio** | Your positions, live-ish P&L, and allocation |
-| **2 · Sell Signals** | Per-holding **SELL / TRIM / HOLD** with a transparent factor breakdown |
+| **2 · Holdings Signals** | For stocks you own: **SELL / UNDERWEIGHT / HOLD / OVERWEIGHT / STRONG BUY** from a two-sided factor breakdown |
 | **3 · Opportunity Scanner** | Ranked buy candidates with analyst coverage, target range & margin of safety |
 | **4 · Smart Money** | Disclosed congressional trades & 13F changes, overlap with your book |
 | **5 · News** | Aggregated headlines + sentiment per ticker |

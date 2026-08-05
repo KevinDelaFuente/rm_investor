@@ -221,8 +221,12 @@ class FactorScore(BaseModel):
 
 class Score(BaseModel):
     ticker: str
-    kind: str              # "sell" | "opportunity" | "moonshot"
+    kind: str              # "sell" | "opportunity" | "moonshot" | "holdings"
     composite: float       # 0..100
     band: str              # e.g. SELL/TRIM/HOLD or STRONG/WATCH/PASS
     factors: list[FactorScore] = Field(default_factory=list)
     flags: list[str] = Field(default_factory=list)   # risk flags (moonshots) etc.
+    # Two-sided holdings scoring (kind == "holdings"); None for one-sided scores.
+    buy_score: Optional[float] = None        # 0..100 strength of the add case
+    sell_score: Optional[float] = None       # 0..100 strength of the exit case
+    conviction: Optional[float] = None       # buy_score - sell_score, -100..+100

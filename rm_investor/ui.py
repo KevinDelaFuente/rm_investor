@@ -69,6 +69,8 @@ _BAND_COLORS = {
     "STRONG": "#27ae60", "WATCH": "#e67e22", "PASS": "#7f8c8d",
     # moonshot tiers
     "HIGH": "#8e44ad", "MEDIUM": "#e67e22", "LOW": "#7f8c8d",
+    # holdings (two-sided): red -> grey -> green ladder
+    "UNDERWEIGHT": "#e67e22", "OVERWEIGHT": "#2e86c1", "STRONG BUY": "#1e8449",
 }
 
 
