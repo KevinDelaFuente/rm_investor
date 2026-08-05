@@ -94,7 +94,7 @@ class DataHub:
     # ----- ratings --------------------------------------------------------- #
     def rating(self, ticker: str, prefer_yf: bool = False) -> Optional[Rating]:
         """Analyst rating. prefer_yf=True forces the free yfinance source first
-        (used for the 97-holding Sell Signals page to conserve FMP quota)."""
+        (used for the whole-portfolio Holdings Signals page to conserve FMP quota)."""
         if prefer_yf:
             yr = self._yf.get_rating(ticker)
             if yr is not None and yr.target_mean is not None:

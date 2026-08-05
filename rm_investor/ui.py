@@ -154,7 +154,8 @@ def cached_gather(ticker: str) -> TickerData:
 @st.cache_data(ttl=_cfg.path("cache.fundamentals_ttl_seconds", 86400), show_spinner="Analyzing…")
 def cached_gather_holding(ticker: str) -> TickerData:
     """Gather for portfolio holdings using free yfinance ratings (conserves FMP quota
-    across the 97-name Sell Signals page). Scanners still use FMP via cached_gather."""
+    across the whole-portfolio Holdings Signals page). Scanners still use FMP via
+    cached_gather."""
     return gather(ticker, prefer_yf_ratings=True)
 
 
