@@ -7,6 +7,7 @@ import time
 import pandas as pd
 import streamlit as st
 
+from rm_investor.research import snapshots
 from rm_investor.scoring.holdings_signals import score_holding_action
 from rm_investor.ui import (
     bootstrap,
@@ -61,6 +62,10 @@ def _analyze():
 
     progress.empty()
     status.empty()
+    # Record a point-in-time snapshot. Fair value, P/E and sentiment cannot be
+    # reconstructed historically from free data, so forward recording is the only way
+    # they ever become validatable. Never raises.
+    snapshots.record((p.ticker, s, d) for p, s, d in scored)
     # Most attractive first (highest conviction to add).
     scored.sort(key=lambda x: (x[1].conviction if x[1].conviction is not None else 0), reverse=True)
     return scored

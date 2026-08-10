@@ -5,6 +5,12 @@ string, so the UI can always explain *why* a name scored the way it did. Factors
 raise: missing data yields a neutral 50 with a "no data" note, so one gap never sinks a
 whole score.
 
+A few factors instead return `None` when their data source provides nothing at all
+(currently the news-sentiment pair). That is not the same as missing one input: inside a
+weight-normalized composite a constant 50 silently shrinks every other factor's
+influence, so a permanently-dead factor must be omitted rather than defaulted. Callers
+filter `None` out of the factor list; `composite()` then redistributes the weight.
+
 Convention: higher value = stronger evidence for that factor's thesis
   * sell factors      -> higher = stronger reason to SELL
   * opportunity factors -> higher = stronger reason to BUY
@@ -223,26 +229,45 @@ def f_analyst_deterioration(rating: Optional[Rating], w: float) -> FactorScore:
     return _fs("Analyst deterioration", val, w, ", ".join(detail_bits))
 
 
-def f_gain_concentration(position: Optional[Position], w: float) -> FactorScore:
-    if position is None:
-        return _fs("Gain / concentration", 50, w, "n/a")
-    gain = position.unrealized_pl_pct
+def f_concentration(position: Optional[Position], w: float, cfg=None) -> FactorScore:
+    """Sell factor: position size versus the book. Higher weight = stronger trim case.
+
+    This deliberately does NOT look at unrealized gain. The previous version scored a
+    doubled position at 90 on the sell side, which is the disposition effect encoded as
+    alpha: your cost basis is a fact about when you bought, not about the stock's forward
+    return, so two managers holding identical shares would get different signals. Position
+    weight is a genuine risk input and stays; P&L is shown on the holdings table instead.
+
+    Anchors assume a diversified book (equal weight ~1% across ~100 names) and are
+    tunable via `scoring.concentration` in config.yaml.
+    """
+    if position is None or position.weight is None:
+        return _fs("Concentration", 50, w, "no position weight")
+
+    from ..config import get_config
+
+    cfg = cfg or get_config()
+    lo = float(cfg.path("scoring.concentration.low_pct", 1.0))
+    hi = float(cfg.path("scoring.concentration.high_pct", 15.0))
     weight = position.weight
-    val = 40.0
-    bits = []
-    if gain is not None:
-        val = _lin(gain, 0, 35, 100, 90)  # +100% gain -> 90 (trim bias)
-        bits.append(f"gain {gain:+.0f}%")
-    if weight is not None and weight > 15:
-        val = _clamp(val + _lin(weight, 15, 0, 40, 30))
-        bits.append(f"weight {weight:.0f}%")
-    return _fs("Gain / concentration", val, w, ", ".join(bits) or "n/a")
+    val = _lin(weight, lo, 30, hi, 90)
+    return _fs("Concentration", val, w, f"weight {weight:.1f}% of book")
 
 
-def f_news_negative(news: list[NewsItem], w: float) -> FactorScore:
+
+def f_news_negative(news: list[NewsItem], w: float) -> Optional[FactorScore]:
+    """Sell factor. Returns None — not a neutral 50 — when nothing scored the sentiment.
+
+    A constant 50 is not neutral inside a weighted composite; it is dilution. The
+    configured provider (yfinance) never populates `NewsItem.sentiment`, so this factor
+    spent every run contributing a fixed value that shrank every live factor's influence,
+    and did so asymmetrically (0.10 weight on the buy side vs 0.075 on the sell side).
+    `composite()` normalizes by total weight, so omitting the factor redistributes
+    cleanly. It re-enables by itself the moment a sentiment-capable provider is used.
+    """
     s = _avg_sentiment(news)
     if s is None:
-        return _fs("News sentiment", 50, w, "no scored sentiment (headlines only)")
+        return None
     val = _lin(s, -1, 100, 1, 0)  # negative sentiment -> high sell
     return _fs("News sentiment", val, w, f"avg sentiment {s:+.2f}")
 
@@ -316,10 +341,11 @@ def f_momentum_constructive(tech: dict, w: float) -> FactorScore:
     return _fs("Momentum", val, w, ", ".join(bits))
 
 
-def f_news_positive(news: list[NewsItem], w: float) -> FactorScore:
+def f_news_positive(news: list[NewsItem], w: float) -> Optional[FactorScore]:
+    """Opportunity factor. Returns None when unscored — see `f_news_negative`."""
     s = _avg_sentiment(news)
     if s is None:
-        return _fs("News sentiment", 50, w, "no scored sentiment (headlines only)")
+        return None
     val = _lin(s, -1, 0, 1, 100)
     return _fs("News sentiment", val, w, f"avg sentiment {s:+.2f}")
 

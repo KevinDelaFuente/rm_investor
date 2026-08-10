@@ -6,11 +6,15 @@ this scores each holding on BOTH sides and nets them:
     conviction = buy_composite - sell_composite      # -100 .. +100
 
 The sell side reuses the exit factors (overvaluation, overbought, analyst
-deterioration, gain concentration, negative news, smart-money selling); the buy
+deterioration, concentration, negative news, smart-money selling); the buy
 side reuses the opportunity factors (analyst upside, undervaluation, reasonable
 valuation, constructive momentum, positive news, smart-money buying). Netting
 them means "nothing wrong" (low sell score) is NOT mistaken for "actively
 attractive" — a holding must earn a positive buy case to be rated ADD.
+
+Factors whose data source is entirely absent return None and are dropped from the list
+rather than contributing a neutral 50 (see `factors.py`), so the news pair currently
+falls out on the default yfinance provider and its weight redistributes.
 
 Costs no extra API calls: both factor sets read the same gathered TickerData.
 """
@@ -24,7 +28,7 @@ from . import build_score, composite
 from .factors import (
     f_analyst_deterioration,
     f_analyst_upside,
-    f_gain_concentration,
+    f_concentration,
     f_momentum_constructive,
     f_momentum_overbought,
     f_news_negative,
@@ -76,24 +80,24 @@ def score_holding_action(position: Position, data, cfg=None) -> Score:
     baseline_pe = sector_baseline_pe(data.fundamentals, cfg)
     ticker = position.ticker
 
-    sell_factors = [
+    sell_factors = [f for f in [
         f_price_vs_target(data.quote, data.rating, sw.get("price_vs_target", 0.15)),
         f_overvaluation(data.fair_value, sw.get("overvaluation", 0.20)),
         f_pe_stretch(data.fundamentals, baseline_pe, sw.get("pe_stretch", 0.10)),
         f_momentum_overbought(data.tech, sw.get("momentum_overbought", 0.15)),
         f_analyst_deterioration(data.rating, sw.get("analyst_deterioration", 0.15)),
-        f_gain_concentration(position, sw.get("gain_concentration", 0.10)),
+        f_concentration(position, sw.get("concentration", 0.10), cfg),
         f_news_negative(data.news, sw.get("news_negative", 0.075)),
         f_smart_money_selling(data.trades, sw.get("smart_money_selling", 0.075)),
-    ]
-    buy_factors = [
+    ] if f is not None]
+    buy_factors = [f for f in [
         f_analyst_upside(data.quote, data.rating, bw.get("analyst_upside", 0.25)),
         f_undervaluation(data.fair_value, bw.get("undervaluation", 0.25)),
         f_valuation_reasonable(data.fundamentals, baseline_pe, bw.get("valuation_reasonable", 0.10)),
         f_momentum_constructive(data.tech, bw.get("momentum", 0.15)),
         f_news_positive(data.news, bw.get("news_positive", 0.10)),
         f_smart_money_buying(data.trades, bw.get("smart_money_buying", 0.15)),
-    ]
+    ] if f is not None]
 
     sell_score = composite(sell_factors)
     buy_score = composite(buy_factors)

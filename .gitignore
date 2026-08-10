@@ -7,6 +7,9 @@
 holdings.csv
 holdings*.bak
 holdings*.csv.bak
+# Every secrets variant, including .bak / .old / dated copies. The bare filename
+# rule below would NOT have caught secrets.toml.bak, which contains API keys.
+.streamlit/secrets.toml*
 .streamlit/secrets.toml
 .claude/settings.local.json
 
