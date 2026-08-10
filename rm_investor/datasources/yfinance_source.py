@@ -155,26 +155,60 @@ class YFinanceSource(PriceSource, FundamentalsSource, RatingsSource, NewsSource)
 
     @staticmethod
     def _augment_recommendations(ticker: str, rating: Rating) -> None:
-        """Fill the buy/hold/sell distribution from the recommendations table."""
+        """Fill the buy/hold/sell distribution AND the month-over-month trend.
+
+        The `recommendations` frame carries four rows — periods "0m", "-1m", "-2m",
+        "-3m". Only the newest was being read, so `trend_delta` stayed None on the
+        yfinance path and "Analyst deterioration" collapsed to a static
+        `recommendation_mean` level, discarding the revision signal that was already
+        sitting in the response. Diffing net bullishness across the two most recent
+        periods recovers it at no extra API cost.
+        """
         try:
             import yfinance as yf
 
             rec = yf.Ticker(ticker).recommendations
             if rec is None or getattr(rec, "empty", True):
                 return
-            row = rec.iloc[0]  # most recent period ("0m")
 
-            def g(*names):
-                for n in names:
+            def pick(period: str, fallback_pos: int):
+                """Row for a named period, falling back to position if unlabelled."""
+                if "period" in rec.columns:
+                    hit = rec[rec["period"].astype(str).str.strip() == period]
+                    if not hit.empty:
+                        return hit.iloc[0]
+                return rec.iloc[fallback_pos] if len(rec) > fallback_pos else None
+
+            def counts(row) -> dict:
+                if row is None:
+                    return {}
+                out = {}
+                for n in ("strongBuy", "buy", "hold", "sell", "strongSell"):
                     if n in row and pd.notna(row[n]):
-                        return int(row[n])
-                return None
+                        out[n] = int(row[n])
+                return out
 
-            rating.strong_buy = g("strongBuy")
-            rating.buy = g("buy")
-            rating.hold = g("hold")
-            rating.sell = g("sell")
-            rating.strong_sell = g("strongSell")
+            cur = counts(pick("0m", 0))
+            prev = counts(pick("-1m", 1))
+            if not cur:
+                return
+
+            rating.strong_buy = cur.get("strongBuy")
+            rating.buy = cur.get("buy")
+            rating.hold = cur.get("hold")
+            rating.sell = cur.get("sell")
+            rating.strong_sell = cur.get("strongSell")
+
+            def net_bullish(c: dict) -> Optional[float]:
+                if not c:
+                    return None
+                return (c.get("strongBuy", 0) + c.get("buy", 0)) - (
+                    c.get("sell", 0) + c.get("strongSell", 0)
+                )
+
+            now, before = net_bullish(cur), net_bullish(prev)
+            if now is not None and before is not None:
+                rating.trend_delta = float(now - before)
         except Exception:
             pass
 
