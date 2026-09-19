@@ -44,3 +44,26 @@ def test_missing_price_does_not_crash_summary():
     s = portfolio_summary(positions)
     assert s["market_value"] == 0.0
     assert s["num_positions"] == 1
+
+
+def test_blank_rows_are_ignored_in_holdings_load():
+    csv_text = """ticker,shares,cost_basis
+AAPL,10,100
+,5,50
+MSFT,,200
+TSLA,0,0
+"""
+    holdings = load_holdings(csv_path=None)
+    # this test intentionally exercises the raw CSV path behavior after forcing the input
+    # through the same parser used in the app by writing to a temp file.
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "holdings.csv"
+        path.write_text(csv_text)
+        holdings = load_holdings(str(path))
+
+    assert [h.ticker for h in holdings] == ["AAPL"]
+    assert holdings[0].shares == 10.0
+    assert holdings[0].cost_basis == 100.0

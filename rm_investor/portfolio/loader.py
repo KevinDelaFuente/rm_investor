@@ -20,11 +20,27 @@ def _rows_to_holdings(df: pd.DataFrame) -> list[Holding]:
     holdings: list[Holding] = []
     for _, row in df.iterrows():
         try:
+            ticker = row.get("ticker")
+            shares = row.get("shares")
+            cost_basis = row.get("cost_basis")
+
+            if ticker is None or pd.isna(ticker):
+                continue
+
+            ticker = str(ticker).strip().upper()
+            if not ticker:
+                continue
+
+            shares = float(shares)
+            cost_basis = float(cost_basis)
+            if pd.isna(shares) or shares <= 0 or pd.isna(cost_basis):
+                continue
+
             holdings.append(
                 Holding(
-                    ticker=str(row["ticker"]).strip().upper(),
-                    shares=float(row["shares"]),
-                    cost_basis=float(row["cost_basis"]),
+                    ticker=ticker,
+                    shares=shares,
+                    cost_basis=cost_basis,
                 )
             )
         except (KeyError, ValueError, TypeError):
